@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState } from 'react'
 import disasterManagementMap from '../assets/images/Disaster-Management-Map.jpg'
 import DisasterResponseCarousel from '../components/DisasterResponseCarousel'

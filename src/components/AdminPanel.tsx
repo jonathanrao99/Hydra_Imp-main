@@ -21,6 +21,7 @@ interface NewsItem {
   excerpt: string
   link: string
   created_at: string
+  is_live_update?: boolean
 }
 
 interface LiveUpdateFormData {
@@ -86,7 +87,7 @@ const AdminPanel = () => {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([])
   const [mediaContent, setMediaContent] = useState<MediaContent[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
-  const [newsImage, setNewsImage] = useState<string | null>(null)
+  const [newsImage, setNewsImage] = useState<File | null>(null)
   const [liveUpdates, setLiveUpdates] = useState<any[]>([])
 
   // Add state for selected files preview
@@ -98,6 +99,8 @@ const AdminPanel = () => {
   const [fireNOCApplications, setFireNOCApplications] = useState<FireNOCApplication[]>([])
   const [selectedApplication, setSelectedApplication] = useState<FireNOCApplication | null>(null)
 
+  const [isLiveUpdate, setIsLiveUpdate] = useState(false)
+
   useEffect(() => {
     // Check if user is already authenticated
     const checkAuth = async () => {
@@ -106,6 +109,15 @@ const AdminPanel = () => {
     }
     checkAuth()
   }, [])
+
+  const createIsLiveUpdateColumn = async () => {
+    try {
+      const { error } = await supabase.rpc('add_is_live_update_column')
+      if (error) throw error
+    } catch (err) {
+      console.error('Error creating is_live_update column:', err)
+    }
+  }
 
   const fetchNewsItems = async () => {
     try {
@@ -116,13 +128,29 @@ const AdminPanel = () => {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Supabase error:', error)
-        setError(`Error fetching news items: ${error.message}`)
-        return
+        if (error.code === '42703') { // Column doesn't exist
+          await createIsLiveUpdateColumn()
+          // Retry the fetch after creating the column
+          const { data: retryData, error: retryError } = await supabase
+            .from('news')
+            .select('id, title, date, image_url, excerpt, link, created_at, is_live_update')
+            .order('created_at', { ascending: false })
+          
+          if (retryError) throw retryError
+          setNewsItems(retryData || [])
+          return
+        }
+        throw error
       }
 
-      console.log('Fetched news items:', data)
-      setNewsItems(data || [])
+      // Add default is_live_update value for existing items
+      const newsItemsWithDefault = (data || []).map(item => ({
+        ...item,
+        is_live_update: false
+      }))
+      
+      console.log('Fetched news items:', newsItemsWithDefault)
+      setNewsItems(newsItemsWithDefault)
     } catch (error) {
       console.error('Unexpected error:', error)
       setError(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -339,7 +367,7 @@ const AdminPanel = () => {
         .from('media_content')
         .getPublicUrl(filePath)
 
-      setNewsImage(data.publicUrl)
+      setNewsImage(file)
       setNewsForm(prev => ({ ...prev, image_url: data.publicUrl }))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error uploading file')
@@ -351,17 +379,62 @@ const AdminPanel = () => {
 
   const handleNewsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    try {
-      const formattedDate = selectedDate ? selectedDate.toISOString().split('T')[0] : ''
-      
-      const { error } = await supabase
-        .from('news')
-        .insert([{
-          ...newsForm,
-          date: formattedDate
-        }])
+    setLoading(true)
+    setError(null)
 
-      if (error) throw error
+    try {
+      // Upload image if selected
+      let imageUrl = ''
+      if (newsImage) {
+        const fileExt = newsImage.name.split('.').pop()
+        const fileName = `${Math.random()}.${fileExt}`
+        const { error: uploadError, data } = await supabase.storage
+          .from('news-images')
+          .upload(fileName, newsImage)
+
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('news-images')
+          .getPublicUrl(fileName)
+
+        imageUrl = publicUrl
+      }
+
+      // Format the date
+      const formattedDate = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+
+      // Insert news item
+      const { error: newsError, data: newsData } = await supabase
+        .from('news')
+        .insert([
+          {
+            title: newsForm.title,
+            date: formattedDate,
+            image_url: imageUrl,
+            excerpt: newsForm.excerpt,
+            link: newsForm.link,
+            is_live_update: isLiveUpdate
+          }
+        ])
+        .select()
+
+      if (newsError) throw newsError
+
+      // If this is a live update, create a corresponding live update
+      if (isLiveUpdate) {
+        const { error: liveUpdateError } = await supabase
+          .from('live_updates')
+          .insert([
+            {
+              title: newsForm.title,
+              content: newsForm.excerpt,
+              link: newsForm.link
+            }
+          ])
+
+        if (liveUpdateError) throw liveUpdateError
+      }
 
       setNewsForm({
         title: '',
@@ -372,11 +445,13 @@ const AdminPanel = () => {
       })
       setSelectedDate(null)
       setNewsImage(null)
+      setIsLiveUpdate(false)
+      setError('News item added successfully!')
       fetchNewsItems()
-      alert('News item added successfully!')
-    } catch (error) {
-      console.error('Error adding news item:', error)
-      setError('Error adding news item')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -516,13 +591,16 @@ const AdminPanel = () => {
   }
 
   const handleDeleteNews = async (id: number, imageUrl: string) => {
+    const confirmed = await showConfirm('Are you sure you want to delete this news item?')
+    if (!confirmed) return
+
     try {
       // Delete the image from storage if it exists
       if (imageUrl) {
         const filePath = imageUrl.split('/').pop()
         if (filePath) {
           const { error: storageError } = await supabase.storage
-            .from('media_content')
+            .from('news-images')
             .remove([filePath])
 
           if (storageError) throw storageError
@@ -981,140 +1059,172 @@ const AdminPanel = () => {
       </div>
 
       {/* News Section */}
-      <div>
-        <h2 className="text-3xl font-semibold mb-6 bg-gradient-to-r from-blue-600 to-blue-800 text-transparent bg-clip-text">News</h2>
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-8 border border-gray-100 hover:shadow-xl transition-all duration-300">
-          <form onSubmit={handleNewsSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-gray-700">Title</label>
-              <input
-                type="text"
-                value={newsForm.title}
-                onChange={(e) => setNewsForm(prev => ({ ...prev, title: e.target.value }))}
-                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-lg"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-gray-700">Date</label>
-              <DatePicker
-                selected={selectedDate}
-                onChange={handleDateChange}
-                dateFormat="yyyy-MM-dd"
-                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-lg"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-gray-700">Image</label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-all duration-200">
-                <div className="space-y-1 text-center">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                    aria-hidden="true"
+      <div className="bg-white rounded-2xl shadow-xl p-8">
+        <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-8">
+          News
+        </h2>
+        <form onSubmit={handleNewsSubmit} className="space-y-6">
+          <div>
+            <label className="block text-base font-medium text-gray-700 mb-2">
+              Title
+            </label>
+            <input
+              type="text"
+              value={newsForm.title}
+              onChange={(e) => setNewsForm(prev => ({ ...prev, title: e.target.value }))}
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-base font-medium text-gray-700 mb-2">
+              Date
+            </label>
+            <DatePicker
+              selected={selectedDate}
+              onChange={handleDateChange}
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors"
+              dateFormat="yyyy-MM-dd"
+            />
+          </div>
+          <div>
+            <label className="block text-base font-medium text-gray-700 mb-2">
+              Image
+            </label>
+            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-blue-500 transition-colors">
+              <div className="space-y-1 text-center">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  stroke="currentColor"
+                  fill="none"
+                  viewBox="0 0 48 48"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <div className="flex text-base text-gray-600">
+                  <label
+                    htmlFor="news-image-upload"
+                    className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
                   >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                    <span>Upload an image</span>
+                    <input
+                      id="news-image-upload"
+                      name="news-image-upload"
+                      type="file"
+                      className="sr-only"
+                      accept="image/*"
+                      onChange={handleNewsFileChange}
                     />
-                  </svg>
-                  <div className="flex text-sm text-gray-600">
-                    <label
-                      htmlFor="news-image-upload"
-                      className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
-                    >
-                      <span>Upload an image</span>
-                      <input
-                        id="news-image-upload"
-                        name="news-image-upload"
-                        type="file"
-                        className="sr-only"
-                        onChange={handleNewsFileChange}
-                        accept="image/*"
-                      />
-                    </label>
-                    <p className="pl-1">or drag and drop</p>
-                  </div>
-                  <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                  </label>
+                  <p className="pl-1">or drag and drop</p>
                 </div>
+                <p className="text-base text-gray-500">PNG, JPG, GIF up to 10MB</p>
               </div>
-              {uploading && <p className="text-sm text-gray-500">Uploading...</p>}
-              {newsImage && (
-                <div className="mt-2">
-                  <img src={newsImage} alt="Preview" className="max-h-48 rounded-lg shadow-md" />
-                </div>
-              )}
             </div>
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-gray-700">Excerpt</label>
-              <textarea
-                value={newsForm.excerpt}
-                onChange={(e) => setNewsForm(prev => ({ ...prev, excerpt: e.target.value }))}
-                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-lg"
-                required
-                rows={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-lg font-medium text-gray-700">Link (Optional)</label>
-              <input
-                type="text"
-                value={newsForm.link}
-                onChange={(e) => setNewsForm(prev => ({ ...prev, link: e.target.value }))}
-                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-lg"
-                placeholder="https://example.com"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl text-lg"
-            >
-              Add News
-            </button>
-          </form>
-        </div>
+            {newsImage && (
+              <div className="mt-4">
+                <img
+                  src={URL.createObjectURL(newsImage)}
+                  alt="Preview"
+                  className="max-h-48 rounded-lg"
+                />
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-base font-medium text-gray-700 mb-2">
+              Excerpt
+            </label>
+            <textarea
+              value={newsForm.excerpt}
+              onChange={(e) => setNewsForm(prev => ({ ...prev, excerpt: e.target.value }))}
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors h-32"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-base font-medium text-gray-700 mb-2">
+              Link to Live Update
+            </label>
+            <input
+              type="text"
+              value={newsForm.link}
+              onChange={(e) => setNewsForm(prev => ({ ...prev, link: e.target.value }))}
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors"
+              placeholder="Optional: Enter URL for related content"
+            />
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="is-live-update"
+              checked={isLiveUpdate}
+              onChange={(e) => setIsLiveUpdate(e.target.checked)}
+              className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="is-live-update" className="ml-2 block text-base text-gray-700">
+              Create as Live Update
+            </label>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white text-base font-semibold py-4 px-6 rounded-xl hover:from-blue-700 hover:to-blue-900 transition-all duration-300 transform hover:scale-[1.02]"
+          >
+            Add News Item
+          </button>
+        </form>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {newsItems.map((news) => (
-            <div 
-              key={news.id} 
-              className="bg-white rounded-xl shadow-lg overflow-hidden"
-            >
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-bold text-xl">{news.title}</h3>
-                  <button
-                    onClick={() => handleDeleteNews(news.id, news.image_url)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+        {/* News Items Grid */}
+        <div className="mt-12">
+          <h3 className="text-2xl font-semibold text-gray-800 mb-6">Recent News</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {newsItems.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 relative"
+              >
+                <button
+                  onClick={() => handleDeleteNews(item.id, item.image_url)}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors duration-200"
+                  title="Delete news item"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                {item.image_url && (
+                  <img
+                    src={item.image_url}
+                    alt={item.title}
+                    className="w-full h-48 object-cover"
+                  />
+                )}
+                <div className="p-6">
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">{item.title}</h4>
+                  <p className="text-base text-gray-600 mb-4">{item.excerpt}</p>
+                  <p className="text-sm text-gray-500">
+                    {new Date(item.date).toLocaleDateString()}
+                  </p>
+                  {item.link && (
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-base font-medium"
+                    >
+                      Read more
+                    </a>
+                  )}
                 </div>
-                <p className="text-lg text-gray-600 mb-2">{news.excerpt}</p>
-                {news.image_url && (
-                  <img src={news.image_url} alt={news.title} className="w-full h-48 object-cover rounded-lg mb-2" />
-                )}
-                <p className="text-lg text-gray-500 mb-2">Date: {news.date}</p>
-                {news.link && (
-                  <a 
-                    href={news.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-blue-600 hover:text-blue-800 text-lg"
-                  >
-                    Read more
-                  </a>
-                )}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
