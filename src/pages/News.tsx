@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import ImageModal from '@/components/ImageModal'
 import { supabase } from '../supabaseClient'
 
 interface NewsItem {
@@ -12,7 +11,7 @@ interface NewsItem {
 }
 
 const News = () => {
-  const [selectedImage, setSelectedImage] = useState<{ image: string; title: string } | null>(null)
+  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null)
   const [newsItems, setNewsItems] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -74,12 +73,13 @@ const News = () => {
         {/* News Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {newsItems.map((news) => (
-            <div key={news.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <div 
+              key={news.id} 
+              className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+              onClick={() => setSelectedNews(news)}
+            >
               {/* News Image */}
-              <div 
-                className="aspect-video relative overflow-hidden cursor-pointer"
-                onClick={() => setSelectedImage({ image: news.image_url, title: news.title })}
-              >
+              <div className="aspect-video relative overflow-hidden">
                 <img
                   src={news.image_url}
                   alt={news.title}
@@ -118,13 +118,64 @@ const News = () => {
           ))}
         </div>
 
-        {/* Image Modal */}
-        {selectedImage && (
-          <ImageModal
-            image={selectedImage.image}
-            title={selectedImage.title}
-            onClose={() => setSelectedImage(null)}
-          />
+        {/* News Popup */}
+        {selectedNews && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-[90vw] h-[90vh] overflow-y-auto">
+              <div className="flex flex-col md:flex-row h-full">
+                {/* Left Column - Image */}
+                <div className="w-full md:w-1/2 p-4 md:p-6">
+                  {selectedNews.image_url && (
+                    <img
+                      src={selectedNews.image_url}
+                      alt={selectedNews.title}
+                      className="w-full h-full max-h-[60vh] md:max-h-[80vh] object-contain rounded-lg"
+                    />
+                  )}
+                </div>
+
+                {/* Right Column - Content */}
+                <div className="w-full md:w-1/2 p-4 md:p-6 flex flex-col">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-900">{selectedNews.title}</h3>
+                    <button
+                      onClick={() => setSelectedNews(null)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <p className="text-base md:text-lg text-gray-500 mb-4">Date: {selectedNews.date}</p>
+                  <p className="text-base md:text-lg text-gray-600 mb-6 flex-grow">{selectedNews.excerpt}</p>
+                  {selectedNews.link && (
+                    <a
+                      href={selectedNews.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors duration-300"
+                    >
+                      Read More
+                      <svg
+                        className="ml-2 w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

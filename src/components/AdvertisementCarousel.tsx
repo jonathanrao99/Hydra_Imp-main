@@ -2,19 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { useMediaContent } from '../hooks/useMediaContent'
 
-interface MediaItem {
-  id: string
-  title: string
-  file_url: string
-  file_type: 'image' | 'video'
-  description: string
-  page_section: string
-  created_at: string
-}
-
-const AssetProtectionCarousel = () => {
+const AdvertisementCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0)
-  const { mediaItems, loading, error } = useMediaContent('asset_protection')
+  const { mediaItems, loading, error } = useMediaContent('advertisement')
 
   useEffect(() => {
     if (mediaItems.length === 0) return
@@ -34,7 +24,7 @@ const AssetProtectionCarousel = () => {
         event: '*', 
         schema: 'public', 
         table: 'media_content',
-        filter: 'page_section=eq.asset_protection'
+        filter: 'page_section=eq.advertisement'
       }, () => {
         // The useMediaContent hook will automatically refetch
       })
@@ -67,30 +57,32 @@ const AssetProtectionCarousel = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="relative w-full max-w-5xl mx-auto">
-        <div className="overflow-hidden rounded-lg shadow-lg">
-          {mediaItems.map((item, index) => (
-            <div
-              key={item.id}
-              className={`transition-opacity duration-500 ${
-                index === currentSlide ? 'opacity-100' : 'opacity-0 hidden'
-              }`}
-            >
-              <div className="aspect-[16/9] relative">
-                {item.file_type === 'image' ? (
-                  <img
-                    src={item.file_url}
-                    alt={item.title}
-                    className="absolute inset-0 w-full h-full object-contain bg-white"
-                  />
-                ) : null}
-              </div>
-              <div className="bg-white p-6 text-center">
-                <p className="text-xl font-semibold text-blue-600">{item.title}</p>
-              </div>
+      <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Advertisement Wing in Action</h2>
+      
+      <div className="relative w-full max-w-4xl mx-auto">
+        {mediaItems.map((item, index) => (
+          <div
+            key={item.id}
+            className={`transition-opacity duration-500 ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0 hidden'
+            }`}
+          >
+            <div className="aspect-[16/9] relative">
+              {item.file_type === 'image' ? (
+                <img
+                  src={item.file_url}
+                  alt={item.title || 'Advertisement Image'}
+                  className="absolute inset-0 w-full h-full object-contain bg-white"
+                />
+              ) : null}
             </div>
-          ))}
-        </div>
+            <div className="text-center mt-4">
+              {item.title && (
+                <p className="text-xl font-semibold text-blue-600">{item.title}</p>
+              )}
+            </div>
+          </div>
+        ))}
 
         {/* Navigation Dots */}
         <div className="flex justify-center mt-4 space-x-3">
@@ -109,4 +101,4 @@ const AssetProtectionCarousel = () => {
   )
 }
 
-export default AssetProtectionCarousel 
+export default AdvertisementCarousel 

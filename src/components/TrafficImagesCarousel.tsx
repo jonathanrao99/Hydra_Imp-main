@@ -1,65 +1,91 @@
-import React, { useState, useEffect } from 'react'
-import trafficImage1 from '../assets/Temp traffic/a1.jpg'
-import trafficImage2 from '../assets/Temp traffic/a2.jpg'
-import trafficImage3 from '../assets/Temp traffic/a3.jpg'
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
+import { useMediaContent } from '../hooks/useMediaContent'
 
 const TrafficImagesCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0)
-  const [touchStart, setTouchStart] = useState(0)
-  const [touchEnd, setTouchEnd] = useState(0)
-
-  const mediaItems = [
-    { src: trafficImage1, alt: 'HYDRAA Traffic Management - Activity 1' },
-    { src: trafficImage2, alt: 'HYDRAA Traffic Management - Activity 2' },
-    { src: trafficImage3, alt: 'HYDRAA Traffic Management - Activity 3' }
-  ]
+  const { mediaItems, loading, error } = useMediaContent('traffic_management')
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (mediaItems.length === 0) return
+
+    const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % mediaItems.length)
     }, 2000)
 
-    return () => clearInterval(interval)
+    return () => clearInterval(timer)
   }, [mediaItems.length])
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX)
-  }
+  useEffect(() => {
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('media_content_channel')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'media_content',
+        filter: 'page_section=eq.traffic_management'
+      }, () => {
+        // The useMediaContent hook will automatically refetch
+      })
+      .subscribe()
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
-  const handleTouchEnd = () => {
-    if (touchStart - touchEnd > 50) {
-      setCurrentSlide((prev) => (prev + 1) % mediaItems.length)
-    }
-    if (touchEnd - touchStart > 50) {
-      setCurrentSlide((prev) => (prev - 1 + mediaItems.length) % mediaItems.length)
-    }
-  }
+  if (loading) return (
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="flex justify-center items-center h-[500px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="text-red-600 text-center">{error}</div>
+    </div>
+  )
+
+  if (mediaItems.length === 0) return (
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="text-gray-600 text-center">No media content available</div>
+    </div>
+  )
 
   return (
-    <div className="w-full max-w-4xl mx-auto mt-8">
-      <div className="relative overflow-hidden rounded-xl shadow-lg">
-        <div
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {mediaItems.map((item, index) => (
-            <div key={index} className="w-full flex-shrink-0">
-              <img
-                src={item.src}
-                alt={item.alt}
-                className="w-full h-auto object-cover max-h-[500px]"
-              />
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Traffic Management in Action</h2>
+      
+      <div className="relative w-full max-w-4xl mx-auto">
+        {mediaItems.map((item, index) => (
+          <div
+            key={item.id}
+            className={`transition-opacity duration-500 ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0 hidden'
+            }`}
+          >
+            <div className="aspect-[16/9] relative">
+              {item.file_type === 'image' ? (
+                <img
+                  src={item.file_url}
+                  alt={item.title || 'Traffic Management Image'}
+                  className="absolute inset-0 w-full h-full object-contain bg-white"
+                />
+              ) : null}
             </div>
-          ))}
-        </div>
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center space-x-2">
+            <div className="text-center mt-4">
+              {item.title && (
+                <p className="text-xl font-semibold text-blue-600">{item.title}</p>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Navigation Dots */}
+        <div className="flex justify-center mt-4 space-x-3">
           {mediaItems.map((_, index) => (
             <button
               key={index}
@@ -67,7 +93,6 @@ const TrafficImagesCarousel = () => {
               className={`w-3 h-3 rounded-full transition-colors duration-300 ${
                 index === currentSlide ? 'bg-blue-600' : 'bg-gray-300'
               }`}
-              aria-label={`Go to slide ${index + 1}`}
             />
           ))}
         </div>

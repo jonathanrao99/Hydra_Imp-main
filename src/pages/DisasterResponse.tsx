@@ -1,40 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import disasterManagementMap from '../assets/images/Disaster-Management-Map.jpg'
-import disasterImage1 from '../assets/Temp Disaster/WhatsApp Image 2025-04-10 at 13.45.57.jpeg'
-import disasterImage2 from '../assets/Temp Disaster/WhatsApp Image 2025-04-10 at 13.40.20.jpeg'
-import disasterImage3 from '../assets/Temp Disaster/WhatsApp Image 2025-04-10 at 13.49.22.jpeg'
-import disasterVideo from '../assets/Temp Disaster/WhatsApp Video 2025-04-14 at 13.33.14.mp4'
+import DisasterResponseCarousel from '../components/DisasterResponseCarousel'
 
 const DisasterResponse = () => {
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
-
-  const mediaItems = [
-    { type: 'image', src: disasterImage2, alt: 'Disaster Response Operation 2' },
-    { type: 'image', src: disasterImage3, alt: 'Disaster Response Operation 3' },
-    { type: 'video', src: disasterVideo, alt: 'Disaster Response Video' },
-    { type: 'image', src: disasterImage1, alt: 'Disaster Response Operation 1' }
-  ]
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (!isVideoPlaying) {
-        setCurrentSlide((prev) => (prev + 1) % mediaItems.length)
-      }
-    }, 2500)
-
-    return () => clearInterval(timer)
-  }, [isVideoPlaying, mediaItems.length])
-
-  const handleVideoPlay = () => {
-    setIsVideoPlaying(true)
-  }
-
-  const handleVideoEnd = () => {
-    setIsVideoPlaying(false)
-    setCurrentSlide((prev) => (prev + 1) % mediaItems.length)
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">Disaster Response</h1>
@@ -50,59 +18,7 @@ const DisasterResponse = () => {
         </div>
 
         {/* Disaster Response Media Section */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Disaster Response in Action</h2>
-          
-          <div className="relative w-full max-w-2xl mx-auto">
-            <div className="overflow-hidden rounded-lg shadow-lg">
-              {mediaItems.map((item, index) => (
-                <div
-                  key={index}
-                  className={`transition-opacity duration-500 ${
-                    index === currentSlide ? 'opacity-100' : 'opacity-0 hidden'
-                  }`}
-                >
-                  {item.type === 'video' ? (
-                    <video
-                      className="w-full h-auto max-h-[400px]"
-                      controls
-                      autoPlay={index === currentSlide}
-                      muted
-                      onPlay={handleVideoPlay}
-                      onEnded={handleVideoEnd}
-                      playsInline
-                    >
-                      <source src={item.src} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
-                  ) : (
-                    <img
-                      src={item.src}
-                      alt={item.alt}
-                      className="w-full h-auto max-h-[400px] object-cover"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Navigation Dots */}
-            <div className="flex justify-center mt-3 space-x-2">
-              {mediaItems.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    setCurrentSlide(index)
-                    setIsVideoPlaying(false)
-                  }}
-                  className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                    index === currentSlide ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        <DisasterResponseCarousel />
 
         {/* Coordination Section */}
         <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-duration-300">
@@ -126,7 +42,6 @@ const DisasterResponse = () => {
           <p className="text-gray-700 leading-relaxed">
             In times of crisis, HYDRAA coordinates with all concerned departments including the Police, GHMC, local bodies, HMWS&SB, HMDA, HMR, HGCL, MRDCL, TGSPDCL, Forest Department, Urban Bio-Diversity (UBD), and the Irrigation Department to manage various types of emergencies effectively.
           </p>
-
         </div>
 
         {/* Risk Management Section */}
