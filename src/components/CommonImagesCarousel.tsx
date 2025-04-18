@@ -1,18 +1,32 @@
 import { useState, useEffect } from 'react'
-import { useMediaContent } from '../hooks/useMediaContent'
+import IMG1 from '../assets/common/IMG1.jpg'
+import IMG2 from '../assets/common/IMG2.jpg'
+import IMG3 from '../assets/common/IMG3.jpg'
+import IMG4 from '../assets/common/IMG4.JPG'
+import IMG5 from '../assets/common/IMG5.jpg'
+import IMG6 from '../assets/common/IMG6.JPG'
+import IMG7 from '../assets/common/IMG7.JPG'
+import IMG8 from '../assets/common/IMG8.JPG'
+import DSC_3016 from '../assets/common/DSC_3016.JPG'
+import DSC_3029 from '../assets/common/DSC_3029.JPG'
 
-interface CarouselProps {
-  section: 'asset_protection' | 'disaster_response' | 'traffic_management' | 'advertisement'
-  title?: string
-}
-
-const CommonImagesCarousel: React.FC<CarouselProps> = ({ section, title }) => {
+const AssetProtectionCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0)
-  const { mediaItems, loading, error } = useMediaContent(section)
+
+  const mediaItems = [
+    { type: 'image', src: IMG1, alt: 'HYDRAA Parjavani ' },
+    { type: 'image', src: IMG2, alt: 'HYDRAA Parjavani ' },
+    { type: 'image', src: IMG3, alt: 'HYDRAA Parjavani ' },
+    { type: 'image', src: IMG4, alt: 'Field Inspection ' },
+    { type: 'image', src: IMG5, alt: 'Field Inspection ' },
+    { type: 'image', src: IMG6, alt: 'Field Inspection ' },
+    { type: 'image', src: IMG7, alt: 'Field Inspection ' },
+    { type: 'image', src: IMG8, alt: 'Field Inspection ' },
+    { type: 'image', src: DSC_3016, alt: 'HYDRAA Collaborating with GHMC ' },
+    { type: 'image', src: DSC_3029, alt: 'HYDRAA Collaborating with GHMC ' }
+  ]
 
   useEffect(() => {
-    if (mediaItems.length === 0) return
-
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % mediaItems.length)
     }, 2000)
@@ -20,66 +34,26 @@ const CommonImagesCarousel: React.FC<CarouselProps> = ({ section, title }) => {
     return () => clearInterval(timer)
   }, [mediaItems.length])
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="text-red-600 text-center">
-          Error loading media content: {error}
-        </div>
-      </div>
-    )
-  }
-
-  if (mediaItems.length === 0) {
-    return null
-  }
-
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
-      {title && (
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">{title}</h2>
-      )}
+      <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Asset Protection Activities</h2>
       
       <div className="relative w-full max-w-4xl mx-auto">
         <div className="overflow-hidden rounded-lg shadow-lg">
           {mediaItems.map((item, index) => (
             <div
-              key={item.id}
+              key={index}
               className={`transition-opacity duration-500 ${
                 index === currentSlide ? 'opacity-100' : 'opacity-0 hidden'
               }`}
             >
-              {item.file_type === 'image' ? (
-                <img
-                  src={item.file_url}
-                  alt={item.title}
-                  className="w-full h-auto max-h-[500px] object-cover"
-                />
-              ) : (
-                <video
-                  src={item.file_url}
-                  className="w-full h-auto max-h-[500px] object-cover"
-                  controls
-                  muted
-                  loop
-                  playsInline
-                />
-              )}
+              <img
+                src={item.src}
+                alt={item.alt}
+                className="w-full h-auto max-h-[500px] object-cover"
+              />
               <div className="bg-gray-50 p-4 text-center">
-                <p className="text-lg font-semibold text-blue-600">{item.title}</p>
-                {item.description && (
-                  <p className="text-gray-600 mt-2">{item.description}</p>
-                )}
+                <p className="text-lg font-semibold text-blue-600">{item.alt}</p>
               </div>
             </div>
           ))}
@@ -102,4 +76,4 @@ const CommonImagesCarousel: React.FC<CarouselProps> = ({ section, title }) => {
   )
 }
 
-export default CommonImagesCarousel 
+export default AssetProtectionCarousel 

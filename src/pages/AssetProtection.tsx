@@ -1,7 +1,7 @@
 import React from 'react'
 import assetProtectionMap from '../assets/images/Asset-Protection-Map.jpg'
 import lakeVideo from '../assets/Temp Asset/WhatsApp Video 2025-04-14 at 20.58.21.mp4'
-import CommonImagesCarousel from '../components/CommonImagesCarousel'
+import AssetProtectionCarousel from '../components/AssetProtectionCarousel'
 
 const AssetProtection = () => {
   return (
@@ -43,7 +43,7 @@ const AssetProtection = () => {
         </div>
 
         {/* Asset Protection Activities Carousel */}
-        <CommonImagesCarousel section="asset_protection"/>
+        <AssetProtectionCarousel />
 
         {/* Video Section - Moved here */}
         <div className="bg-white rounded-xl shadow-lg p-8">
