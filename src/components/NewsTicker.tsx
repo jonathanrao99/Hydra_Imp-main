@@ -85,19 +85,14 @@ const NewsTicker = () => {
               {repeatedUpdates.map((update, index) => (
                 <span 
                   key={`update-${update.id}-${index}`}
-                  className={`inline-block mr-8 cursor-pointer transition-all duration-300 ${
+                  className={`inline-block mr-8 ${
                     (update.link_to_news_id || update.direct_link) 
-                      ? 'hover:text-blue-100' 
+                      ? 'cursor-pointer hover:text-blue-100 transition-all duration-300' 
                       : ''
                   }`}
                   onClick={() => handleUpdateClick(update)}
                 >
                   {update.title}
-                  {(update.link_to_news_id || update.direct_link) && (
-                    <span className="ml-2 text-xs opacity-75">
-                      (Click to view {update.link_to_news_id ? 'news' : 'link'})
-                    </span>
-                  )}
                   {" • "}
                 </span>
               ))}

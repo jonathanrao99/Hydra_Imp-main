@@ -10,10 +10,17 @@ import IMG8 from '../assets/common/IMG8.JPG'
 import DSC_3016 from '../assets/common/DSC_3016.JPG'
 import DSC_3029 from '../assets/common/DSC_3029.JPG'
 
+interface CarouselItem {
+  type: string
+  src: string
+  alt: string
+  description?: string
+}
+
 const AssetProtectionCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0)
 
-  const mediaItems = [
+  const mediaItems: CarouselItem[] = [
     { type: 'image', src: IMG1, alt: 'HYDRAA Parjavani ' },
     { type: 'image', src: IMG2, alt: 'HYDRAA Parjavani ' },
     { type: 'image', src: IMG3, alt: 'HYDRAA Parjavani ' },
@@ -22,8 +29,18 @@ const AssetProtectionCarousel = () => {
     { type: 'image', src: IMG6, alt: 'Field Inspection ' },
     { type: 'image', src: IMG7, alt: 'Field Inspection ' },
     { type: 'image', src: IMG8, alt: 'Field Inspection ' },
-    { type: 'image', src: DSC_3016, alt: 'HYDRAA Collaborating with GHMC ' },
-    { type: 'image', src: DSC_3029, alt: 'HYDRAA Collaborating with GHMC ' }
+    {
+      type: 'image',
+      src: DSC_3016,
+      alt: 'Asset Protection 1',
+      description: 'Our team working on asset protection'
+    },
+    {
+      type: 'image',
+      src: DSC_3029,
+      alt: 'Asset Protection 2',
+      description: 'Asset protection in action'
+    }
   ]
 
   useEffect(() => {
@@ -52,8 +69,11 @@ const AssetProtectionCarousel = () => {
                 alt={item.alt}
                 className="w-full h-auto max-h-[500px] object-cover"
               />
-              <div className="bg-gray-50 p-4 text-center">
-                <p className="text-lg font-semibold text-blue-600">{item.alt}</p>
+              <div className="bg-white p-6 text-center">
+                <p className="text-xl font-semibold text-blue-600 mb-1">{item.alt}</p>
+                {item.description && (
+                  <p className="text-sm text-gray-600">{item.description}</p>
+                )}
               </div>
             </div>
           ))}

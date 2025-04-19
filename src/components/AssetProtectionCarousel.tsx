@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { useMediaContent } from '../hooks/useMediaContent'
 
@@ -15,16 +15,33 @@ interface MediaItem {
 const AssetProtectionCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0)
   const { mediaItems, loading, error } = useMediaContent('asset_protection')
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
     if (mediaItems.length === 0) return
 
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % mediaItems.length)
-    }, 2000)
+    // Only set up timer for images, not for videos
+    if (mediaItems[currentSlide]?.file_type === 'image') {
+      const timer = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % mediaItems.length)
+      }, 3000)
+      return () => clearInterval(timer)
+    }
+  }, [mediaItems.length, currentSlide, mediaItems])
 
-    return () => clearInterval(timer)
-  }, [mediaItems.length])
+  // Handle video completion
+  const handleVideoEnd = () => {
+    setCurrentSlide((prev) => (prev + 1) % mediaItems.length)
+  }
+
+  // Handle slide change
+  useEffect(() => {
+    if (mediaItems[currentSlide]?.file_type === 'video' && videoRef.current) {
+      videoRef.current.play().catch(error => {
+        console.log('Auto-play prevented:', error)
+      })
+    }
+  }, [currentSlide, mediaItems])
 
   useEffect(() => {
     // Set up real-time subscription
@@ -83,10 +100,26 @@ const AssetProtectionCarousel = () => {
                     alt={item.title}
                     className="absolute inset-0 w-full h-full object-contain bg-white"
                   />
+                ) : item.file_type === 'video' ? (
+                  <video
+                    ref={videoRef}
+                    src={item.file_url}
+                    controls
+                    playsInline
+                    autoPlay
+                    muted
+                    onEnded={handleVideoEnd}
+                    className="absolute inset-0 w-full h-full object-contain bg-white"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
                 ) : null}
               </div>
               <div className="bg-white p-6 text-center">
-                <p className="text-xl font-semibold text-blue-600">{item.title}</p>
+                <p className="text-xl font-semibold text-blue-600 mb-1">{item.title}</p>
+                {item.description && (
+                  <p className="text-sm text-gray-600">{item.description}</p>
+                )}
               </div>
             </div>
           ))}

@@ -53,6 +53,28 @@ interface FireNOCApplication {
   created_at: string
 }
 
+// Type definitions for better type safety
+interface UploadProgressEvent {
+  loaded: number
+  total: number
+}
+
+interface LiveUpdate {
+  id: number
+  title: string
+  link_to_news_id: number | null
+  direct_link: string | null
+  created_at: string
+}
+
+interface FileOptions {
+  cacheControl?: string;
+  contentType?: string;
+  duplex?: string;
+  upsert?: boolean;
+  onUploadProgress?: (progress: UploadProgressEvent) => void;
+}
+
 const AdminPanel = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [email, setEmail] = useState('')
@@ -88,7 +110,7 @@ const AdminPanel = () => {
   const [mediaContent, setMediaContent] = useState<MediaContent[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
   const [newsImage, setNewsImage] = useState<File | null>(null)
-  const [liveUpdates, setLiveUpdates] = useState<any[]>([])
+  const [liveUpdates, setLiveUpdates] = useState<LiveUpdate[]>([])
 
   // Add state for selected files preview
   const [selectedFilesPreview, setSelectedFilesPreview] = useState<{ file: File; preview: string }[]>([])
@@ -99,147 +121,272 @@ const AdminPanel = () => {
   const [fireNOCApplications, setFireNOCApplications] = useState<FireNOCApplication[]>([])
   const [selectedApplication, setSelectedApplication] = useState<FireNOCApplication | null>(null)
 
-  const [isLiveUpdate, setIsLiveUpdate] = useState(false)
-
+  // Optimize authentication check with loading state
   useEffect(() => {
-    // Check if user is already authenticated
+    let mounted = true
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setIsAuthenticated(!!session)
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
+        if (mounted) setIsAuthenticated(!!session)
+      } catch (err) {
+        console.error('Auth error:', err)
+        if (mounted) setError('Authentication failed')
+      }
     }
     checkAuth()
+    return () => { mounted = false }
   }, [])
 
-  const createIsLiveUpdateColumn = async () => {
+  // Optimize data fetching with a single function
+  const fetchData = async () => {
     try {
-      const { error } = await supabase.rpc('add_is_live_update_column')
-      if (error) throw error
-    } catch (err) {
-      console.error('Error creating is_live_update column:', err)
-    }
-  }
+      setLoading(true)
+      const [newsResponse, mediaResponse, liveUpdatesResponse, fireNOCResponse] = await Promise.all([
+        supabase.from('news').select('*').order('created_at', { ascending: false }),
+        supabase.from('media_content').select('*').order('created_at', { ascending: false }),
+        supabase.from('live_updates').select('*').order('created_at', { ascending: false }),
+        supabase.from('fire_noc_applications').select('*').order('created_at', { ascending: false })
+      ])
 
-  const fetchNewsItems = async () => {
-    try {
-      console.log('Fetching news items...')
-      const { data, error } = await supabase
-        .from('news')
-        .select('id, title, date, image_url, excerpt, link, created_at')
-        .order('created_at', { ascending: false })
+      if (newsResponse.error) throw newsResponse.error
+      if (mediaResponse.error) throw mediaResponse.error
+      if (liveUpdatesResponse.error) throw liveUpdatesResponse.error
+      if (fireNOCResponse.error) throw fireNOCResponse.error
 
-      if (error) {
-        if (error.code === '42703') { // Column doesn't exist
-          await createIsLiveUpdateColumn()
-          // Retry the fetch after creating the column
-          const { data: retryData, error: retryError } = await supabase
-            .from('news')
-            .select('id, title, date, image_url, excerpt, link, created_at, is_live_update')
-            .order('created_at', { ascending: false })
-          
-          if (retryError) throw retryError
-          setNewsItems(retryData || [])
-          return
-        }
-        throw error
-      }
-
-      // Add default is_live_update value for existing items
-      const newsItemsWithDefault = (data || []).map(item => ({
-        ...item,
-        is_live_update: false
-      }))
-      
-      console.log('Fetched news items:', newsItemsWithDefault)
-      setNewsItems(newsItemsWithDefault)
+      setNewsItems(newsResponse.data || [])
+      setMediaContent(mediaResponse.data || [])
+      setLiveUpdates(liveUpdatesResponse.data || [])
+      setFireNOCApplications(fireNOCResponse.data || [])
     } catch (error) {
-      console.error('Unexpected error:', error)
-      setError(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-  }
-
-  useEffect(() => {
-    fetchNewsItems()
-  }, [])
-
-  useEffect(() => {
-    fetchMediaContent()
-  }, [])
-
-  const fetchMediaContent = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('media_content')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setMediaContent(data || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      console.error('Error fetching data:', error)
+      showAlert('Error fetching data. Please refresh the page.', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchLiveUpdates = async () => {
+  // Initial data fetch
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchData()
+    }
+  }, [isAuthenticated])
+
+  // Optimize file upload with proper type handling and error management
+  const uploadWithProgress = async (file: File, path: string, bucket: string): Promise<string> => {
     try {
-      console.log('Fetching live updates...')
-      const { data, error } = await supabase
-        .from('live_updates')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const { error: uploadError, data } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true,
+        })
 
-      if (error) {
-        console.error('Error fetching live updates:', error)
-        throw error
-      }
+      if (uploadError) throw uploadError
 
-      console.log('Fetched live updates:', data)
-      setLiveUpdates(data || [])
-    } catch (err) {
-      console.error('Error in fetchLiveUpdates:', err)
-      setError(err instanceof Error ? err.message : 'Error fetching live updates')
+      // Update progress after successful upload
+      setUploadProgress(100)
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(path)
+
+      return publicUrl
+    } catch (error) {
+      throw error
     }
   }
 
-  useEffect(() => {
-    console.log('Component mounted, fetching live updates...')
-    fetchLiveUpdates()
-  }, [])
-
-  // Set up real-time subscriptions
-  useEffect(() => {
-    // Subscribe to live updates changes
-    const liveUpdatesSubscription = supabase
-      .channel('live_updates_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_updates' }, () => {
-        fetchLiveUpdates()
-      })
-      .subscribe()
-
-    // Subscribe to media content changes
-    const mediaContentSubscription = supabase
-      .channel('media_content_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'media_content' }, () => {
-        fetchMediaContent()
-      })
-      .subscribe()
-
-    // Subscribe to news changes
-    const newsSubscription = supabase
-      .channel('news_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, () => {
-        fetchNewsItems()
-      })
-      .subscribe()
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      liveUpdatesSubscription.unsubscribe()
-      mediaContentSubscription.unsubscribe()
-      newsSubscription.unsubscribe()
+  // Optimize media content submission with better error handling and cleanup
+  const handleMediaContentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedFiles.length) {
+      showAlert('Please select at least one file', 'error')
+      return
     }
-  }, [])
+
+    setUploading(true)
+    setUploadProgress(0)
+    const uploadedUrls: string[] = []
+
+    try {
+      for (const file of selectedFiles) {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+        const filePath = `${mediaContentForm.page_section}/${fileName}`
+
+        const publicUrl = await uploadWithProgress(file, filePath, 'media')
+        uploadedUrls.push(publicUrl)
+
+        await supabase.from('media_content').insert([{
+          title: mediaContentForm.title || file.name,
+          description: mediaContentForm.description,
+          file_url: publicUrl,
+          file_type: file.type.startsWith('image/') ? 'image' : 'video',
+          page_section: mediaContentForm.page_section
+        }])
+      }
+
+      // Reset form and fetch updated data
+      setMediaContentForm({
+        title: '',
+        description: '',
+        file_url: '',
+        page_section: 'asset_protection'
+      })
+      setSelectedFiles([])
+      setSelectedFilesPreview([])
+      await fetchData()
+      showAlert('Media content uploaded successfully', 'success')
+    } catch (error: any) {
+      console.error('Error:', error)
+      showAlert(error.message || 'Error uploading media content', 'error')
+      // Cleanup any uploaded files if there was an error
+      for (const url of uploadedUrls) {
+        const filePath = url.split('/').pop()
+        if (filePath) {
+          await supabase.storage.from('media').remove([filePath])
+        }
+      }
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
+  // Optimize news submission with transaction-like behavior
+  const handleNewsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    let uploadedFileName: string | null = null
+
+    try {
+      let imageUrl = ''
+      if (newsImage) {
+        const fileExt = newsImage.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+        uploadedFileName = fileName
+        imageUrl = await uploadWithProgress(newsImage, fileName, 'news-images')
+      }
+
+      const formattedDate = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+
+      const { error: newsError } = await supabase
+        .from('news')
+        .insert([{
+          title: newsForm.title,
+          date: formattedDate,
+          image_url: imageUrl,
+          excerpt: newsForm.excerpt,
+          link: newsForm.link
+        }])
+
+      if (newsError) throw newsError
+
+      // Reset form and fetch updated data
+      setNewsForm({
+        title: '',
+        date: '',
+        image_url: '',
+        excerpt: '',
+        link: ''
+      })
+      setSelectedDate(null)
+      setNewsImage(null)
+      await fetchData()
+      showAlert('News item added successfully!', 'success')
+    } catch (err) {
+      showAlert(err instanceof Error ? err.message : 'An error occurred', 'error')
+      // Cleanup uploaded image if there was an error
+      if (uploadedFileName) {
+        await supabase.storage.from('news-images').remove([uploadedFileName])
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Optimize live update submission with better validation
+  const handleLiveUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!liveUpdateForm.title) {
+      showAlert('Title is required', 'error')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('live_updates')
+        .insert([{
+          title: liveUpdateForm.title,
+          link_to_news_id: liveUpdateForm.link_to_news_id || null,
+          direct_link: liveUpdateForm.direct_link || null
+        }])
+
+      if (error) throw error
+      
+      setLiveUpdateForm({ 
+        title: '', 
+        link_to_news_id: undefined,
+        direct_link: ''
+      })
+      
+      await fetchData()
+      showAlert('Live update added successfully!')
+    } catch (error) {
+      console.error('Error in handleLiveUpdateSubmit:', error)
+      showAlert('Error adding live update', 'error')
+    }
+  }
+
+  // Optimize delete operations with proper cleanup
+  const handleDeleteMediaContent = async (id: string | number, fileUrl: string) => {
+    const confirmed = await showConfirm('Are you sure you want to delete this media content?')
+    if (!confirmed) return
+
+    try {
+      const filePath = fileUrl.split('/').pop()
+      if (filePath) {
+        // Delete from storage first
+        const { error: storageError } = await supabase.storage
+          .from('media_content')
+          .remove([filePath])
+
+        if (storageError) throw storageError
+      }
+
+      // Then delete from database
+      const { error: dbError } = await supabase
+        .from('media_content')
+        .delete()
+        .eq('id', id)
+
+      if (dbError) throw dbError
+
+      await fetchData()
+      showAlert('Media content deleted successfully!')
+    } catch (err) {
+      showAlert(err instanceof Error ? err.message : 'Error deleting media content', 'error')
+    }
+  }
+
+  // Set up real-time subscriptions more efficiently
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const subscription = supabase
+      .channel('table-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'media_content' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_updates' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fire_noc_applications' }, fetchData)
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [isAuthenticated])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -268,31 +415,62 @@ const AdminPanel = () => {
     setIsAuthenticated(false)
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
+  const generateVideoThumbnail = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video')
+      video.preload = 'metadata'
+      video.playsInline = true
+      video.muted = true
 
-    // Validate file types
-    const validFiles = files.filter(file => {
-      const isImage = file.type.startsWith('image/')
-      const isVideo = file.type.startsWith('video/')
-      return isImage || isVideo
+      video.onloadeddata = () => {
+        video.currentTime = 1
+      }
+
+      video.onseeked = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(video, 0, 0, canvas.width, canvas.height)
+          const thumbnailUrl = canvas.toDataURL('image/jpeg')
+          URL.revokeObjectURL(video.src)
+          resolve(thumbnailUrl)
+        } catch (err) {
+          reject(err)
+        }
+      }
+
+      video.onerror = () => {
+        reject(new Error('Error loading video'))
+      }
+
+      video.src = URL.createObjectURL(file)
     })
+  }
 
-    if (validFiles.length === 0) {
-      setError('Unsupported file type. Please upload images (JPEG, PNG, GIF) or videos (MP4, WebM) only.')
-      e.target.value = '' // Clear the file input
-      return
-    }
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setSelectedFiles(files)
 
-    // Create previews for the files
-    const newPreviews = validFiles.map(file => ({
-      file,
-      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
-    }))
-
-    setSelectedFilesPreview(prev => [...prev, ...newPreviews])
-    setSelectedFiles(prev => [...prev, ...validFiles])
+    // Generate previews for selected files
+    const previews = await Promise.all(
+      files.map(async (file) => {
+        let preview = ''
+        if (file.type.startsWith('image/')) {
+          preview = URL.createObjectURL(file)
+        } else if (file.type.startsWith('video/')) {
+          try {
+            preview = await generateVideoThumbnail(file)
+          } catch (error) {
+            console.error('Error generating video thumbnail:', error)
+            preview = '' // Use a default video thumbnail or placeholder
+          }
+        }
+        return { file, preview }
+      })
+    )
+    setSelectedFilesPreview(previews)
   }
 
   const handleRemoveFile = (index: number) => {
@@ -310,32 +488,6 @@ const AdminPanel = () => {
       newFiles.splice(index, 1)
       return newFiles
     })
-  }
-
-  const uploadFile = async (file: File) => {
-    try {
-      setUploading(true)
-      setUploadProgress(0)
-
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
-      const filePath = `${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('media_content')
-        .upload(filePath, file)
-
-      if (uploadError) throw uploadError
-
-      const { data } = supabase.storage
-        .from('media_content')
-        .getPublicUrl(filePath)
-
-      return data.publicUrl
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error uploading file')
-      return null
-    }
   }
 
   const handleNewsFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -377,167 +529,6 @@ const AdminPanel = () => {
     }
   }
 
-  const handleNewsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-
-    try {
-      // Upload image if selected
-      let imageUrl = ''
-      if (newsImage) {
-        const fileExt = newsImage.name.split('.').pop()
-        const fileName = `${Math.random()}.${fileExt}`
-        const { error: uploadError, data } = await supabase.storage
-          .from('news-images')
-          .upload(fileName, newsImage)
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('news-images')
-          .getPublicUrl(fileName)
-
-        imageUrl = publicUrl
-      }
-
-      // Format the date
-      const formattedDate = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-
-      // Insert news item
-      const { error: newsError, data: newsData } = await supabase
-        .from('news')
-        .insert([
-          {
-            title: newsForm.title,
-            date: formattedDate,
-            image_url: imageUrl,
-            excerpt: newsForm.excerpt,
-            link: newsForm.link,
-            is_live_update: isLiveUpdate
-          }
-        ])
-        .select()
-
-      if (newsError) throw newsError
-
-      // If this is a live update, create a corresponding live update
-      if (isLiveUpdate) {
-        const { error: liveUpdateError } = await supabase
-          .from('live_updates')
-          .insert([
-            {
-              title: newsForm.title,
-              content: newsForm.excerpt,
-              link: newsForm.link
-            }
-          ])
-
-        if (liveUpdateError) throw liveUpdateError
-      }
-
-      setNewsForm({
-        title: '',
-        date: '',
-        image_url: '',
-        excerpt: '',
-        link: ''
-      })
-      setSelectedDate(null)
-      setNewsImage(null)
-      setIsLiveUpdate(false)
-      setError('News item added successfully!')
-      fetchNewsItems()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleLiveUpdateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      console.log('Submitting live update:', liveUpdateForm)
-      const { data, error } = await supabase
-        .from('live_updates')
-        .insert([{ 
-          title: liveUpdateForm.title,
-          link_to_news_id: liveUpdateForm.link_to_news_id || null,
-          direct_link: liveUpdateForm.direct_link || null
-        }])
-        .select()
-
-      if (error) {
-        console.error('Error inserting live update:', error)
-        throw error
-      }
-
-      console.log('Successfully inserted live update:', data)
-      
-      setLiveUpdateForm({ 
-        title: '', 
-        link_to_news_id: undefined,
-        direct_link: ''
-      })
-      
-      await fetchLiveUpdates()
-      showAlert('Live update added successfully!')
-    } catch (error) {
-      console.error('Error in handleLiveUpdateSubmit:', error)
-      showAlert('Error adding live update', 'error')
-    }
-  }
-
-  const handleMediaContentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (selectedFiles.length === 0) {
-      setError('Please select at least one file to upload')
-      return
-    }
-
-    try {
-      const uploadPromises = selectedFiles.map(async (file) => {
-        const fileUrl = await uploadFile(file)
-        if (!fileUrl) return null
-
-        const fileType = file.type.startsWith('image/') ? 'image' : 'video'
-
-        const { error } = await supabase
-          .from('media_content')
-          .insert([{
-            ...mediaContentForm,
-            file_url: fileUrl,
-            file_type: fileType
-          }])
-
-        if (error) throw error
-        return fileUrl
-      })
-
-      const results = await Promise.all(uploadPromises)
-      const successfulUploads = results.filter(url => url !== null)
-
-      if (successfulUploads.length > 0) {
-        setMediaContentForm({
-          title: '',
-          description: '',
-          file_url: '',
-          page_section: 'asset_protection'
-        })
-        setSelectedFiles([])
-        fetchMediaContent()
-        alert(`Successfully uploaded ${successfulUploads.length} file(s)!`)
-      }
-    } catch (error) {
-      console.error('Error adding media content:', error)
-      setError('Error adding media content')
-    } finally {
-      setUploading(false)
-      setUploadProgress(0)
-    }
-  }
-
   const handleDeleteLiveUpdate = async (id: number) => {
     const confirmed = await showConfirm('Are you sure you want to delete this live update?')
     if (!confirmed) return
@@ -555,38 +546,10 @@ const AdminPanel = () => {
       }
 
       console.log('Successfully deleted live update') // Debug log
-      await fetchLiveUpdates() // Ensure we wait for the fetch to complete
+      await fetchData() // Ensure we wait for the fetch to complete
       showAlert('Live update deleted successfully!')
     } catch (err) {
-      console.error('Error in handleDeleteLiveUpdate:', err)
       showAlert(err instanceof Error ? err.message : 'Error deleting live update', 'error')
-    }
-  }
-
-  const handleDeleteMediaContent = async (id: string | number, fileUrl: string) => {
-    const confirmed = await showConfirm('Are you sure you want to delete this media content?')
-    if (!confirmed) return
-
-    try {
-      const filePath = fileUrl.split('/').pop()
-      if (filePath) {
-        const { error: storageError } = await supabase.storage
-          .from('media_content')
-          .remove([filePath])
-
-        if (storageError) throw storageError
-      }
-
-      const { error } = await supabase
-        .from('media_content')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-      fetchMediaContent()
-      showAlert('Media content deleted successfully!')
-    } catch (err) {
-      showAlert(err instanceof Error ? err.message : 'Error deleting media content', 'error')
     }
   }
 
@@ -616,7 +579,7 @@ const AdminPanel = () => {
       if (error) throw error
 
       // Refresh the news items list
-      await fetchNewsItems()
+      await fetchData()
       showAlert('News item deleted successfully!')
     } catch (error) {
       console.error('Error deleting news item:', error)
@@ -702,20 +665,6 @@ const AdminPanel = () => {
     })
   }
 
-  const fetchFireNOCApplications = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('fire_noc_applications')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setFireNOCApplications(data || [])
-    } catch (error) {
-      console.error('Error fetching Fire NOC applications:', error)
-    }
-  }
-
   const handleUpdateApplicationStatus = async (id: string, status: 'approved' | 'rejected') => {
     try {
       const { error } = await supabase
@@ -724,15 +673,11 @@ const AdminPanel = () => {
         .eq('id', id)
 
       if (error) throw error
-      await fetchFireNOCApplications()
+      await fetchData()
     } catch (error) {
       console.error('Error updating application status:', error)
     }
   }
-
-  useEffect(() => {
-    fetchFireNOCApplications()
-  }, [])
 
   if (!isAuthenticated) {
     return (
@@ -797,9 +742,6 @@ const AdminPanel = () => {
       </div>
     )
   }
-
-  if (loading) return <div>Loading...</div>
-  if (error) return <div>Error: {error}</div>
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -935,7 +877,6 @@ const AdminPanel = () => {
                 value={mediaContentForm.description || ''}
                 onChange={(e) => setMediaContentForm(prev => ({ ...prev, description: e.target.value }))}
                 className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-base"
-                placeholder="Enter description (optional)"
                 rows={3}
               />
             </div>
@@ -1023,11 +964,29 @@ const AdminPanel = () => {
                 <option value="advertisement">Advertisement</option>
               </select>
             </div>
+
+            {/* Upload Progress */}
+            {uploading && (
+              <div className="space-y-3">
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all duration-300 ease-out rounded-full"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Uploading...</span>
+                  <span>{Math.round(uploadProgress)}%</span>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl"
+              disabled={uploading || selectedFiles.length === 0}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add Media Content
+              {uploading ? `Uploading... ${Math.round(uploadProgress)}%` : 'Add Media Content'}
             </button>
           </form>
         </div>
@@ -1036,8 +995,10 @@ const AdminPanel = () => {
           {mediaContent.map((item) => (
             <div key={item.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="p-4">
-                <h3 className="font-bold mb-2 text-lg">{item.title}</h3>
-                <p className="text-base text-gray-600 mb-2">{item.description}</p>
+                <h3 className="font-bold mb-1 text-lg">{item.title}</h3>
+                {item.description && (
+                  <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+                )}
                 <div className="mb-2">
                   {item.file_type === 'image' ? (
                     <img src={item.file_url} alt={item.title} className="w-full h-48 object-cover rounded-lg" />
@@ -1059,10 +1020,8 @@ const AdminPanel = () => {
       </div>
 
       {/* News Section */}
-      <div className="bg-white rounded-2xl shadow-xl p-8">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-8">
-          News
-        </h2>
+      <div className="bg-white rounded-xl shadow-lg p-8 mb-8 border border-gray-100 hover:shadow-xl transition-all duration-300">
+        <h2 className="text-3xl font-semibold mb-6 bg-gradient-to-r from-blue-600 to-blue-800 text-transparent bg-clip-text">News</h2>
         <form onSubmit={handleNewsSubmit} className="space-y-6">
           <div>
             <label className="block text-base font-medium text-gray-700 mb-2">
@@ -1072,7 +1031,7 @@ const AdminPanel = () => {
               type="text"
               value={newsForm.title}
               onChange={(e) => setNewsForm(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-0 focus:border-blue-500 transition-colors"
               required
             />
           </div>
@@ -1083,7 +1042,7 @@ const AdminPanel = () => {
             <DatePicker
               selected={selectedDate}
               onChange={handleDateChange}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors"
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-0 focus:border-blue-500 transition-colors"
               dateFormat="yyyy-MM-dd"
             />
           </div>
@@ -1091,7 +1050,7 @@ const AdminPanel = () => {
             <label className="block text-base font-medium text-gray-700 mb-2">
               Image
             </label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl hover:border-blue-500 transition-colors">
+            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors">
               <div className="space-y-1 text-center">
                 <svg
                   className="mx-auto h-12 w-12 text-gray-400"
@@ -1144,37 +1103,25 @@ const AdminPanel = () => {
             <textarea
               value={newsForm.excerpt}
               onChange={(e) => setNewsForm(prev => ({ ...prev, excerpt: e.target.value }))}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors h-32"
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-0 focus:border-blue-500 transition-colors h-32"
               required
             />
           </div>
           <div>
             <label className="block text-base font-medium text-gray-700 mb-2">
-              Link to Live Update
+              Link (Optional)
             </label>
             <input
               type="text"
               value={newsForm.link}
               onChange={(e) => setNewsForm(prev => ({ ...prev, link: e.target.value }))}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors"
-              placeholder="Optional: Enter URL for related content"
+              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-0 focus:border-blue-500 transition-colors"
+              placeholder="Enter URL for related content"
             />
-          </div>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="is-live-update"
-              checked={isLiveUpdate}
-              onChange={(e) => setIsLiveUpdate(e.target.checked)}
-              className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="is-live-update" className="ml-2 block text-base text-gray-700">
-              Create as Live Update
-            </label>
           </div>
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white text-base font-semibold py-4 px-6 rounded-xl hover:from-blue-700 hover:to-blue-900 transition-all duration-300 transform hover:scale-[1.02]"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white text-base font-semibold py-4 px-6 rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all duration-300 transform hover:scale-[1.02]"
           >
             Add News Item
           </button>
@@ -1187,11 +1134,15 @@ const AdminPanel = () => {
             {newsItems.map((item) => (
               <div
                 key={item.id}
-                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 relative"
+                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 relative cursor-pointer"
+                onClick={() => setSelectedNews(item)}
               >
                 <button
-                  onClick={() => handleDeleteNews(item.id, item.image_url)}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors duration-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteNews(item.id, item.image_url);
+                  }}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors duration-200 z-10"
                   title="Delete news item"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1205,28 +1156,77 @@ const AdminPanel = () => {
                     className="w-full h-48 object-cover"
                   />
                 )}
-                <div className="p-6">
+                <div className="p-4">
                   <h4 className="text-base font-semibold text-gray-800 mb-2">{item.title}</h4>
-                  <p className="text-base text-gray-600 mb-4">{item.excerpt}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 mb-2">
                     {new Date(item.date).toLocaleDateString()}
                   </p>
-                  {item.link && (
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-base font-medium"
-                    >
-                      Read more
-                    </a>
-                  )}
+                  <p className="text-sm text-gray-600 line-clamp-4">
+                    {item.excerpt}
+                  </p>
+                  <button 
+                    className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedNews(item);
+                    }}
+                  >
+                    Read More
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* News Item Popup */}
+      {selectedNews && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedNews(null)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              {selectedNews.image_url && (
+                <img
+                  src={selectedNews.image_url}
+                  alt={selectedNews.title}
+                  className="w-full h-64 object-cover"
+                />
+              )}
+              <button
+                onClick={() => setSelectedNews(null)}
+                className="absolute top-4 right-4 bg-white text-gray-800 rounded-full p-2 hover:bg-gray-100 transition-colors duration-200"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedNews.title}</h3>
+              <p className="text-gray-500 mb-4">{new Date(selectedNews.date).toLocaleDateString()}</p>
+              <div className="prose max-w-none">
+                <p className="text-gray-700 whitespace-pre-wrap">{selectedNews.excerpt}</p>
+              </div>
+              {selectedNews.link && (
+                <a
+                  href={selectedNews.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                >
+                  Visit Full Article
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fire NOC Applications Section */}
       <div className="mt-12">

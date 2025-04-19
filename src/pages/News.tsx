@@ -89,13 +89,16 @@ const News = () => {
 
               {/* News Content */}
               <div className="p-6">
-                <div className="text-sm text-gray-500 mb-2">{news.date}</div>
+                <div className="text-sm text-gray-500 mb-2">{new Date(news.date).toLocaleDateString()}</div>
                 <h2 className="text-xl font-semibold text-gray-800 mb-3 hover:text-blue-600 transition-colors duration-300">
                   {news.title}
                 </h2>
-                <p className="text-gray-600 mb-4">{news.excerpt}</p>
-                <a
-                  href={news.link}
+                <p className="text-gray-600 mb-4 line-clamp-4">{news.excerpt}</p>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSelectedNews(news);
+                  }}
                   className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors duration-300"
                 >
                   Read More
@@ -112,7 +115,7 @@ const News = () => {
                       d="M9 5l7 7-7 7"
                     />
                   </svg>
-                </a>
+                </button>
               </div>
             </div>
           ))}
