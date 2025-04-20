@@ -2,6 +2,8 @@ import React from 'react'
 import { useState } from 'react'
 import disasterManagementMap from '../assets/images/Disaster-Management-Map.jpg'
 import DisasterResponseCarousel from '../components/DisasterResponseCarousel'
+import WaterLoggingMap from '../components/WaterLoggingMap'
+import { waterLoggingPoints } from '../components/waterLoggingPoints'
 
 const DisasterResponse = () => {
   return (
@@ -27,6 +29,18 @@ const DisasterResponse = () => {
           <p className="text-gray-700 leading-relaxed">
             HYDRAA coordinates closely with the National Disaster Response Force (NDRF), State Disaster Management Authority (SDMA), and the Telangana Disaster Response & Fire Services (TG DR&FS) Department, along with other State and National disaster management agencies.
           </p>
+        </div>
+
+        {/* Water Logging Points Section */}
+        <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-duration-300">
+          <h2 className="text-2xl font-semibold text-blue-600 mb-6">Water Logging Points across Hyderabad</h2>
+          <p className="text-gray-700 leading-relaxed">
+            Below is an interactive map indicating water logging locations across Hyderabad.
+          </p>
+          <div className="mt-4">
+            <WaterLoggingMap points={waterLoggingPoints} />
+          </div>
+          
         </div>
 
         {/* Technical Agencies Section */}

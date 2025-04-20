@@ -220,7 +220,7 @@ const AdminPanel = () => {
         uploadedUrls.push(publicUrl)
 
         await supabase.from('media_content').insert([{
-          title: mediaContentForm.title || file.name,
+          title: mediaContentForm.title || '',
           description: mediaContentForm.description,
           file_url: publicUrl,
           file_type: file.type.startsWith('image/') ? 'image' : 'video',
@@ -1020,115 +1020,108 @@ const AdminPanel = () => {
       </div>
 
       {/* News Section */}
-      <div className="bg-white rounded-xl shadow-lg p-8 mb-8 border border-gray-100 hover:shadow-xl transition-all duration-300">
+      <div className="mb-12">
         <h2 className="text-3xl font-semibold mb-6 bg-gradient-to-r from-blue-600 to-blue-800 text-transparent bg-clip-text">News</h2>
-        <form onSubmit={handleNewsSubmit} className="space-y-6">
-          <div>
-            <label className="block text-base font-medium text-gray-700 mb-2">
-              Title
-            </label>
-            <input
-              type="text"
-              value={newsForm.title}
-              onChange={(e) => setNewsForm(prev => ({ ...prev, title: e.target.value }))}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-0 focus:border-blue-500 transition-colors"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-700 mb-2">
-              Date
-            </label>
-            <DatePicker
-              selected={selectedDate}
-              onChange={handleDateChange}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-0 focus:border-blue-500 transition-colors"
-              dateFormat="yyyy-MM-dd"
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-700 mb-2">
-              Image
-            </label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors">
-              <div className="space-y-1 text-center">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  stroke="currentColor"
-                  fill="none"
-                  viewBox="0 0 48 48"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <div className="flex text-base text-gray-600">
-                  <label
-                    htmlFor="news-image-upload"
-                    className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
-                  >
-                    <span>Upload an image</span>
-                    <input
-                      id="news-image-upload"
-                      name="news-image-upload"
-                      type="file"
-                      className="sr-only"
-                      accept="image/*"
-                      onChange={handleNewsFileChange}
-                    />
-                  </label>
-                  <p className="pl-1">or drag and drop</p>
-                </div>
-                <p className="text-base text-gray-500">PNG, JPG, GIF up to 10MB</p>
-              </div>
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-8 border border-gray-100 hover:shadow-xl transition-all duration-300">
+          <form onSubmit={handleNewsSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label className="block text-base font-medium text-gray-700">Title</label>
+              <input
+                type="text"
+                value={newsForm.title}
+                onChange={(e) => setNewsForm(prev => ({ ...prev, title: e.target.value }))}
+                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-base"
+                required
+              />
             </div>
-            {newsImage && (
-              <div className="mt-4">
-                <img
-                  src={URL.createObjectURL(newsImage)}
-                  alt="Preview"
-                  className="max-h-48 rounded-lg"
-                />
+            <div className="space-y-2">
+              <label className="block text-base font-medium text-gray-700">Date</label>
+              <DatePicker
+                selected={selectedDate}
+                onChange={handleDateChange}
+                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-base"
+                dateFormat="yyyy-MM-dd"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-base font-medium text-gray-700">Image</label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors">
+                <div className="space-y-1 text-center">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    stroke="currentColor"
+                    fill="none"
+                    viewBox="0 0 48 48"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <div className="flex text-base text-gray-600">
+                    <label
+                      htmlFor="news-image-upload"
+                      className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                    >
+                      <span>Upload an image</span>
+                      <input
+                        id="news-image-upload"
+                        name="news-image-upload"
+                        type="file"
+                        className="sr-only"
+                        accept="image/*"
+                        onChange={handleNewsFileChange}
+                      />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-base text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                </div>
               </div>
-            )}
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-700 mb-2">
-              Excerpt
-            </label>
-            <textarea
-              value={newsForm.excerpt}
-              onChange={(e) => setNewsForm(prev => ({ ...prev, excerpt: e.target.value }))}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-0 focus:border-blue-500 transition-colors h-32"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-base font-medium text-gray-700 mb-2">
-              Link (Optional)
-            </label>
-            <input
-              type="text"
-              value={newsForm.link}
-              onChange={(e) => setNewsForm(prev => ({ ...prev, link: e.target.value }))}
-              className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-0 focus:border-blue-500 transition-colors"
-              placeholder="Enter URL for related content"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white text-base font-semibold py-4 px-6 rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all duration-300 transform hover:scale-[1.02]"
-          >
-            Add News Item
-          </button>
-        </form>
+              {newsImage && (
+                <div className="mt-4">
+                  <img
+                    src={URL.createObjectURL(newsImage)}
+                    alt="Preview"
+                    className="max-h-48 rounded-lg"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="block text-base font-medium text-gray-700">Excerpt</label>
+              <textarea
+                value={newsForm.excerpt}
+                onChange={(e) => setNewsForm(prev => ({ ...prev, excerpt: e.target.value }))}
+                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-base"
+                rows={4}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-base font-medium text-gray-700">Link (Optional)</label>
+              <input
+                type="text"
+                value={newsForm.link}
+                onChange={(e) => setNewsForm(prev => ({ ...prev, link: e.target.value }))}
+                className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-0 focus:outline-none transition-all duration-200 text-base"
+                placeholder="Enter URL for related content"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              Add News Item
+            </button>
+          </form>
+        </div>
 
         {/* News Items Grid */}
-        <div className="mt-12">
+        <div className="mt-8">
           <h3 className="text-2xl font-semibold text-gray-800 mb-6">Recent News</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {newsItems.map((item) => (

@@ -9,6 +9,7 @@ import DisasterResponse from './pages/DisasterResponse'
 import TrafficManagement from './pages/TrafficManagement'
 import Advertisement from './pages/Advertisement'
 import FireNOC from './pages/FireNOC'
+import Grievances from './pages/Grievances'
 import Contact from './pages/Contact'
 import News from './pages/News'
 import AdminPanel from './components/AdminPanel'
@@ -23,6 +24,7 @@ function App() {
           <Route path="organisation-structure" element={<OrganisationStructure />} />
           <Route path="services" element={<Services />} />
           <Route path="services/fire-noc" element={<FireNOC />} />
+          <Route path="services/grievances" element={<Grievances />} />
           <Route path="asset-protection" element={<AssetProtection />} />
           <Route path="disaster-response" element={<DisasterResponse />} />
           <Route path="traffic-management" element={<TrafficManagement />} />

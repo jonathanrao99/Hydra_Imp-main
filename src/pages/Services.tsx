@@ -18,7 +18,11 @@ const Services = () => {
             description="Apply for Fire Safety NOC for your property. Get your building certified for fire safety compliance."
             link="/services/fire-noc"
           />
-          {/* Add other service cards here */}
+          <ServiceCard
+            title="Grievances"
+            description="Submit your grievances and concerns. Our team will address them promptly and take necessary action."
+            link="/services/grievances"
+          />
         </div>
       </div>
     </div>

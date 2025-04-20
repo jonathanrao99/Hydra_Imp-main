@@ -21,7 +21,8 @@ const Navbar = () => {
 
   const serviceLinks = [
     { name: 'All Services', path: '/services' },
-    { name: 'Apply for Fire NOC', path: '/services/fire-noc' }
+    { name: 'Apply for Fire NOC', path: '/services/fire-noc' },
+    { name: 'Grievances', path: '/services/grievances' }
   ]
 
   const isActive = (path: string) => {
