@@ -36,6 +36,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   font-family: var(--body-font);
+  color: #000;
+  font-size: 1.125rem;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -56,4 +58,22 @@ h1, h2, h3, h4, h5, h6 {
 
 .animate-fadeIn {
   animation: fadeIn 1s ease-out forwards;
+}
+
+/* Override page content colors */
+.text-gray-500,
+.text-gray-600,
+.text-gray-700 {
+  color: #000 !important;
+}
+
+/* Increase page content font sizes */
+main .text-sm {
+  font-size: 1rem !important; /* bump small text */
+}
+main .text-base {
+  font-size: 1.125rem !important; /* bump base text */
+}
+main .text-lg {
+  font-size: 1.25rem !important; /* bump large text */
 } 

@@ -3,6 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-le
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import 'leaflet/dist/leaflet.css'
 import type { Map } from 'leaflet'
+import L from 'leaflet'
+import { supabase } from '../supabaseClient'
 
 interface Point {
   lat: number
@@ -23,17 +25,33 @@ interface RainInfo extends Point {
 const WaterLoggingMap = ({ points = [] }: Props) => {
   const center: [number, number] = [17.45, 78.486671] // Central Telangana (moved slightly north)
   const [map, setMap] = useState<Map | null>(null)
+  const [zoom, setZoom] = useState<number>(12)
+  const [heavyAlertSent, setHeavyAlertSent] = useState(false)
+  const [floodAlertSent, setFloodAlertSent] = useState(false)
   const [precipitationMM, setPrecipitationMM] = useState<number>(0)
   const [precipitationChance, setPrecipitationChance] = useState<number>(0)
   const [rainInfo, setRainInfo] = useState<RainInfo[]>([])
   // Select every 5th point (indices 0,5,10,...) up to 6 locations
   const topPoints = points.filter((_, idx) => idx % 5 === 0).slice(0, 6)
 
+  // Create a larger semi-transparent red circle DivIcon for markers
+  const redCircleIcon = new L.DivIcon({
+    html: '<div style="width:48px; height:48px; border-radius:50%; background:rgba(255,0,0,0.5); border:4px solid white;"></div>',
+    className: '',
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+  })
+
   // Component to initialize the map instance
   const MapInitializer: React.FC = () => {
     const mapInstance = useMap()
     useEffect(() => {
       setMap(mapInstance)
+      setZoom(mapInstance.getZoom())
+      mapInstance.on('zoomend', () => setZoom(mapInstance.getZoom()))
+      return () => {
+        mapInstance.off('zoomend')
+      }
     }, [mapInstance])
     return null
   }
@@ -80,6 +98,36 @@ const WaterLoggingMap = ({ points = [] }: Props) => {
     return () => clearInterval(intervalId)
   }, [points])
 
+  // Send live updates based on precipitation thresholds
+  useEffect(() => {
+    const sendAlerts = async () => {
+      if (precipitationMM > 30 && !floodAlertSent) {
+        await supabase.from('live_updates').insert({
+          title: 'Flood warning - Citizens are advised to take immediate precautions',
+        })
+        setFloodAlertSent(true)
+      } else if (precipitationMM > 15 && !heavyAlertSent) {
+        await supabase.from('live_updates').insert({
+          title: 'Expected heavy rainfall - Citizens are advised to be cautious',
+        })
+        setHeavyAlertSent(true)
+      }
+    }
+    sendAlerts()
+  }, [precipitationMM, heavyAlertSent, floodAlertSent])
+
+  // Simulation handlers for testing alerts
+  const simulateHeavy = async () => {
+    await supabase.from('live_updates').insert({
+      title: 'Expected heavy rainfall - Citizens are advised to be cautious',
+    })
+  }
+  const simulateFlood = async () => {
+    await supabase.from('live_updates').insert({
+      title: 'Flood warning - Citizens are advised to take immediate precautions',
+    })
+  }
+
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start' }}>
       <div style={{ flex: '0 0 75%' }}>
@@ -99,11 +147,25 @@ const WaterLoggingMap = ({ points = [] }: Props) => {
               ) : null
             )}
             <MarkerClusterGroup>
-              {points.map((pt, index) => (
-                <Marker key={index} position={[pt.lat, pt.lng]}>
-                  <Popup>{pt.label.split(' - ')[1]}</Popup>
-                </Marker>
-              ))}
+              {points
+                .filter(pt => {
+                  const lbl = pt.label.toLowerCase()
+                  return !lbl.includes('hospital') && !lbl.includes('medical')
+                })
+                .map((pt, index) => {
+                  const size = Math.round(48 * (zoom / 12))
+                  const dynamicIcon = new L.DivIcon({
+                    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:rgba(255,0,0,0.5);border:4px solid white;"></div>`,
+                    className: '',
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2],
+                  })
+                  return (
+                    <Marker key={index} position={[pt.lat, pt.lng]} icon={dynamicIcon}>
+                      <Popup>{pt.label.split(' - ')[1]}</Popup>
+                    </Marker>
+                  )
+                })}
             </MarkerClusterGroup>
           </MapContainer>
           <button
@@ -125,22 +187,31 @@ const WaterLoggingMap = ({ points = [] }: Props) => {
         </div>
       </div>
       <div style={{ flex: '0 0 25%', paddingLeft: '1rem', maxHeight: '600px', overflowY: 'auto' }}>
-        <h3>Top Water Logging Locations</h3>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {topPoints.map((pt, index) => (
-            <li
-              key={index}
-              style={{ cursor: 'pointer', margin: '0.5rem 0', color: '#007bff' }}
-              onClick={() => map?.flyTo([pt.lat, pt.lng], 14)}
-            >
-              {pt.label.split(' - ')[1]}
-            </li>
-          ))}
-        </ul>
         <div style={{ marginTop: '1rem' }}>
           <p><strong>Total water logging points:</strong> {points.length}</p>
-          <p><strong>Current precipitation:</strong> {precipitationMM} mm</p>
           <p><strong>Chance of rainfall:</strong> {precipitationChance}%</p>
+          <p><strong>Current precipitation:</strong> {precipitationMM} mm</p>
+          <br></br>
+          <p><strong>Light Rain: </strong>1 - 5mm</p>
+          <p><strong>Moderate Rain: </strong>5 - 10mm</p>
+          <p><strong>Heavy Rain: </strong>15 - 20mm</p>
+          <p><strong>Flood: </strong>30mm and above</p>
+          {/* Simulation Controls */}
+          <div style={{ marginTop: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Simulation</h3>
+            <button
+              onClick={simulateHeavy}
+              style={{ marginRight: '0.5rem', padding: '0.5rem 1rem', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Simulate Heavy Rainfall
+            </button>
+            <button
+              onClick={simulateFlood}
+              style={{ padding: '0.5rem 1rem', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Simulate Flood Warning
+            </button>
+          </div>
         </div>
       </div>
     </div>

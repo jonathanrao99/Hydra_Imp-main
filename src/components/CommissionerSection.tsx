@@ -30,7 +30,7 @@ const CommissionerSection = () => {
   return (
     <div 
       ref={sectionRef}
-      className="bg-white py-8 md:py-12 opacity-0 transition-opacity duration-1000"
+      className="bg-white pt-4 pb-8 md:pt-6 md:pb-10 opacity-0 transition-opacity duration-1000"
     >
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-8">

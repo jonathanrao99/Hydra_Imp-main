@@ -34,7 +34,7 @@ interface MediaContentFormData {
   title?: string
   description?: string
   file_url: string
-  page_section: 'asset_protection' | 'disaster_response' | 'traffic_management' | 'advertisement'
+  page_section: 'asset_protection' | 'disaster_response' | 'traffic_management' | 'advertisement' | 'lake_rejuvenation'
 }
 
 interface FireNOCApplication {
@@ -962,6 +962,7 @@ const AdminPanel = () => {
                 <option value="disaster_response">Disaster Response</option>
                 <option value="traffic_management">Traffic Management</option>
                 <option value="advertisement">Advertisement</option>
+                <option value="lake_rejuvenation">Lake Rejuvenation</option>
               </select>
             </div>
 

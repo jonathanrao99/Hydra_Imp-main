@@ -1,11 +1,29 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import disasterManagementMap from '../assets/images/Disaster-Management-Map.jpg'
 import DisasterResponseCarousel from '../components/DisasterResponseCarousel'
 import WaterLoggingMap from '../components/WaterLoggingMap'
 import { waterLoggingPoints } from '../components/waterLoggingPoints'
 
 const DisasterResponse = () => {
+  const location = useLocation()
+  // Scroll to water logging section if hash present
+  useEffect(() => {
+    if (location.hash === '#water-logging') {
+      // Delay to ensure layout complete
+      setTimeout(() => {
+        const section = document.getElementById('water-logging')
+        if (section) {
+          // Use a fixed offset (e.g., 100px) to account for header
+          const y = section.offsetTop - 100
+          console.log('Scrolling to y:', y)
+          window.scrollTo({ top: y, behavior: 'smooth' })
+        }
+      }, 100)
+    }
+  }, [location.hash])
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">Disaster Response</h1>
@@ -16,7 +34,7 @@ const DisasterResponse = () => {
         <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-duration-300">
           <h2 className="text-2xl font-semibold text-blue-600 mb-6">Emergency Response by Disaster Response Force (DRF)</h2>
           <p className="text-gray-700 leading-relaxed">
-            HYDRAA's Disaster Response Force (DRF) undertakes immediate disaster response and relief operations during any emergency or disaster situation within its jurisdiction.
+            HYDRAA's Disaster Response Force (DRF) undertakes immediate disaster response and relief operations during any emergency or disaster situation.
           </p>
         </div>
 
@@ -32,7 +50,7 @@ const DisasterResponse = () => {
         </div>
 
         {/* Water Logging Points Section */}
-        <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-duration-300">
+        <div id="water-logging-points" className="scroll-mt-24 bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-duration-300">
           <h2 className="text-2xl font-semibold text-blue-600 mb-6">Water Logging Points across Hyderabad</h2>
           <p className="text-gray-700 leading-relaxed">
             Below is an interactive map indicating water logging locations across Hyderabad.

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import ChiefMinisterSection from '../components/ChiefMinisterSection'
 import PrincipalSecretarySection from '../components/PrincipalSecretarySection'
 import CommissionerSection from '../components/CommissionerSection'
+import NavigationCarousel from '../components/NavigationCarousel'
 import { supabase } from '../supabaseClient'
 
 interface LiveUpdate {
@@ -173,50 +174,16 @@ const Home = () => {
           />
         </div>
 
-        {/* Live Updates Carousel */}
-        <div className="absolute top-0 left-0 w-full bg-blue-600 text-white p-4">
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-lg font-semibold mb-2">Live Updates</h2>
-            <div className="overflow-x-auto whitespace-nowrap">
-              {liveUpdates.map((update) => (
-                <div
-                  key={update.id}
-                  className={`inline-block mr-4 p-2 rounded-lg ${
-                    update.link_to_news_id 
-                      ? 'bg-white/20 hover:bg-white/30 cursor-pointer' 
-                      : 'bg-white/10'
-                  }`}
-                  onClick={(e) => {
-                    if (update.link_to_news_id) {
-                      e.stopPropagation()
-                      // Navigate to the news item
-                      window.location.href = `/news/${update.link_to_news_id}`
-                    }
-                  }}
-                >
-                  {update.title}
-                  {update.link_to_news_id && (
-                    <span className="ml-2 text-xs opacity-75">(Click to view news)</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Sections */}
-        <div className="relative h-screen">
-          <div className={`absolute inset-0 transition-opacity duration-500 ${activeSection === 'cm' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <ChiefMinisterSection />
-          </div>
-          <div className={`absolute inset-0 transition-opacity duration-500 ${activeSection === 'ps' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <PrincipalSecretarySection />
-          </div>
-          <div className={`absolute inset-0 transition-opacity duration-500 ${activeSection === 'commissioner' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            <CommissionerSection />
-          </div>
+        <div className="relative z-10 bg-white pt-4 md:pt-6 pb-8">
+          {activeSection === 'cm' && <ChiefMinisterSection />}
+          {activeSection === 'ps' && <PrincipalSecretarySection />}
+          {activeSection === 'commissioner' && <CommissionerSection />}
         </div>
       </div>
+
+      {/* Navigation Carousel */}
+      <NavigationCarousel />
     </div>
   )
 }

@@ -128,15 +128,6 @@ const About = () => {
           </div>
         </div>
 
-        {/* Vision Section */}
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-12 hover:shadow-xl transition-all duration-300">
-          <h2 className="text-2xl font-semibold text-blue-600 mb-6 text-center">Our Vision</h2>
-          <div className="space-y-6">
-            <p className="text-gray-700 leading-relaxed text-lg text-center">
-              Through unified effort, HYDRAA aims to ensure equitable, efficient, and proactive disaster management—creating a safer, more resilient urban future for Hyderabad and its growing metropolitan region.
-            </p>
-          </div>
-        </div>
 
         {/* Purpose and Vision */}
         <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300 mb-8">
@@ -144,7 +135,7 @@ const About = () => {
           <div className="space-y-4">
             <div className="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors duration-300">
               <p className="text-gray-700">
-                To bridge this critical gap, the Government of Telangana has initiated the establishment of a single, unified agency to oversee disaster management across the Telangana Core Urban Region (TCUR). The TCUR includes the entire GHMC area and adjoining urban stretches within Hyderabad, Rangareddy, Medchal–Malkajgiri, and Sangareddy districts—all falling within the ORR boundary.
+                To address these challenges, the Government of Telangana has initiated the establishment of a single, unified agency to oversee disaster management across the Telangana Core Urban Region (TCUR). The TCUR includes the entire GHMC area and adjoining urban stretches within Hyderabad, Rangareddy, Medchal–Malkajgiri, and Sangareddy districts—all falling within the ORR boundary.
               </p>
             </div>
             
@@ -152,6 +143,12 @@ const About = () => {
               <p className="text-gray-700">
                 In response to this need, the Hyderabad Disaster Response and Asset Administration (HYDRAA) has been constituted. HYDRAA will serve as the centralized authority for disaster response, risk mitigation, emergency coordination, and critical asset protection across the TCUR.
               </p>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors duration-300">
+              <p className="text-gray-700">
+                Planning, organizing, coordinating and implementing measures for preparedness and prevention of urban disasters
+               </p>
             </div>
             
             <div className="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors duration-300">

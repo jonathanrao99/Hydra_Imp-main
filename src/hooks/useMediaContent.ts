@@ -7,7 +7,7 @@ export interface MediaContent {
   description: string
   file_url: string
   file_type: 'image' | 'video'
-  page_section: 'asset_protection' | 'disaster_response' | 'traffic_management' | 'advertisement'
+  page_section: 'asset_protection' | 'disaster_response' | 'traffic_management' | 'advertisement' | 'lake_rejuvenation'
   created_at: string
 }
 

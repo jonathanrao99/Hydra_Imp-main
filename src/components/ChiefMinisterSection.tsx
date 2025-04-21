@@ -31,7 +31,7 @@ const ChiefMinisterSection = () => {
   return (
     <section 
       ref={sectionRef}
-      className="bg-white py-8 md:py-12 opacity-0 transition-opacity duration-1000"
+      className="bg-white pt-4 pb-8 md:pt-6 md:pb-10 opacity-0 transition-opacity duration-1000"
       aria-labelledby="cm-message-heading"
     >
       <div className="container mx-auto px-4">

@@ -1,9 +1,21 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import assetProtectionMap from '../assets/images/Asset-Protection-Map.jpg'
-import lakeVideo from '../assets/Temp Asset/WhatsApp Video 2025-04-14 at 20.58.21.mp4'
 import AssetProtectionCarousel from '../components/AssetProtectionCarousel'
+import LakeRejuvenationCarousel from '../components/LakeRejuvenationCarousel'
 
 const AssetProtection = () => {
+  // Scroll to Lake Rejuvenation section if hash present
+  useEffect(() => {
+    if (window.location.hash === '#lake-rejuvenation') {
+      const section = document.getElementById('lake-rejuvenation');
+      if (section) {
+        const yOffset = -20;
+        const y = section.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold text-center text-gray-800 mb-12">Asset Protection</h1>
@@ -24,9 +36,9 @@ const AssetProtection = () => {
               { title: 'Parks', icon: '🌳' },
               { title: 'Open Spaces', icon: '🌲' },
               { title: 'Community / Society Places', icon: '🏘️' },
-              { title: 'Lakes Protection', icon: '💧' },
+              { title: 'Protection of Lakes', icon: '💧' },
               { title: 'Lakes Rejuvenation', icon: '🌊' },
-              { title: 'Nalas Protection', icon: '🌊' },
+              { title: 'Protection of Nalas', icon: '🌊' },
               { title: 'FTL Demarcation', icon: '📏' }
             ].map((item, index) => (
               <div 
@@ -45,68 +57,39 @@ const AssetProtection = () => {
         {/* Asset Protection Activities Carousel */}
         <AssetProtectionCarousel />
 
-        {/* Video Section - Moved here */}
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        {/* Lake Rejuvenation Section */}
+        <div id="lake-rejuvenation" className="scroll-mt-24">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">Lake Rejuvenation</h2>
-          <div className="flex justify-center">
-            <div className="w-full max-w-4xl rounded-lg overflow-hidden shadow-lg">
-              <video 
-                className="w-full h-auto"
-                controls
-                autoPlay
-                muted
-                loop
-                playsInline
-                poster={assetProtectionMap}
-              >
-                <source src={lakeVideo} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            </div>
-          </div>
-          <p className="text-gray-600 text-center mt-4">
-            Watch how HYDRAA contributes to lake rejuvenation efforts across the region.
-          </p>
+          <LakeRejuvenationCarousel />
         </div>
 
         {/* Lake Encroachments Section */}
         <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-duration-300">
-          <h2 className="text-2xl font-semibold text-blue-600 mb-6">Removal of Lake Encroachments</h2>
+          <h2 className="text-2xl font-semibold text-blue-600 mb-6">Protection of Lakes</h2>
           <p className="text-gray-700 leading-relaxed">
             In coordination with GHMC, HMDA, local bodies, the Irrigation Department, the Revenue Department, and other relevant agencies, HYDRAA undertakes the removal of encroachments affecting lakes and water bodies.
           </p>
         </div>
 
-        {/* Know Your Lakes Section */}
-        <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-duration-300">
-          <h2 className="text-2xl font-semibold text-blue-600 mb-6">Know Your Lakes</h2>
-          <p className="text-gray-700 leading-relaxed mb-4">
-            Explore comprehensive information about lakes in the Hyderabad Metropolitan Development Authority (HMDA) region.
-          </p>
-          <a 
-            href="https://lakes.hmda.gov.in/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
-          >
-            Visit HMDA Lakes Portal
-            <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-          </a>
-        </div>
-
         {/* Inspection Section */}
         <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-duration-300">
           <h2 className="text-2xl font-semibold text-blue-600 mb-6">Inspection of Private Premises for Regulatory Compliance</h2>
-          <p className="text-gray-700 leading-relaxed">
-            Upon receiving requests from Urban Local Bodies (ULBs), Urban Development Authorities (UDAs), or planning authorities, HYDRAA is empowered to inspect private premises for violations of building and town planning regulations. It also acts in cases involving dilapidated structures that pose a threat to public safety. While performing these duties, HYDRAA officials are deemed to be operating under the jurisdiction of the concerned ULBs, UDAs, and planning authorities, in accordance with their respective Acts, Rules, and Regulations.
+          <p>
+          To inspect private premises for:
+          <ul className="list-disc list-inside text-gray-700">
+            <li>Building and town planning regulation</li>
+            <li>Removal of dilapidated structures endangering public safety</li>
+          </ul><br></br>
+          </p>
+          <p>Whenever such requests are received from government agencies like ULBs, UDAs and planning authorities.
+          </p><br></br>
+          <p>In exercise of such powers, the HYDRAA authorities shall be deemed to be working under such ULBs, UDA and planning authorities, under the relevant Acts, Rules and Regulations of ULBs, UDA and planning authorities.
           </p>
         </div>
       </div>
 
       {/* Asset Protection Map Section */}
-      <div className="bg-white rounded-xl shadow-lg p-8">
+      <div className="mt-12">
         <h2 className="text-3xl font-bold text-gray-800 mb-6">Asset Protection Jurisdiction Map</h2>
         <div className="flex flex-col items-center">
           <img 
